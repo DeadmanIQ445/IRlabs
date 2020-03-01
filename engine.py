@@ -1,8 +1,6 @@
-import re
-import string
-import nltk
-import pickle
 import os
+import re
+import nltk
 
 nltk.download('punkt')
 nltk.download('wordnet')
@@ -63,17 +61,30 @@ def preprocess(text):
 def preprocess_no_lemma(text):
     return remove_stop_word(tokenize(normalize(text)))
 
+class Doc:
+    def __init__(self, soup, id):
+        self.id = id
+        if soup.body is not None:
+            self.title = soup.title.string
+            self.body = soup.body
+            self.date = soup.dateline
+        else:
+            self.title = soup.text[:100]
+            self.body = soup.text
+            self.date = None
 
 def make_collection():
-    all_files = glob.glob('data/*.sgm')
+    all_files = glob.glob('./data/*.sgm')
     collection = []
+    docs = []
     for fil in all_files:
         with open(fil, 'rb') as f:
             sample_file = f.read()
             for text in sample_file.split(b"</REUTERS>"):
                 soup = BeautifulSoup(text, 'html.parser')
                 collection.append(soup.get_text())
-    return collection
+                docs.append(Doc(soup, len(docs)))
+    return docs, collection
 
 
 def make_index(collection):
@@ -216,9 +227,12 @@ def calculate_query(query):
         set1 = set1.intersection(set2)
         return set1
 
-    a = query.split()
+    a = query.split(" ")
     num = []
     calc = []
+    if len(a) == 1:
+        return index[preprocess(a[0])[0]]
+
     for i in range(len(a)):
         if a[i] in ['(', ')', '||', "&"]:
             calc.append(a[i])
@@ -245,6 +259,7 @@ def calculate_query(query):
             calc.pop()
         else:
             print('Something\'s not right ')
+
     return list(num[0])
 
 
@@ -252,13 +267,17 @@ def search(index, query):
     a = process_query(query)
     print('Internal representation of query:', a)
     a = calculate_query(a)
-    return [(i, collection[i]) for i in a]
+    print(a)
+    return [(i, docs[i]) for i in a]
 
 
-collection = make_collection()
+docs, collection = make_collection()
+
 index = make_index(collection)
 soundex_index = make_soundex_index(collection)
 wild_index = make_wild_index(collection)
+def get_doc(id):
+    return docs[id]
 # def save():
 #     if not os.path.exists("./dumps"):
 #         os.mkdir("./dumps")
