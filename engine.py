@@ -66,7 +66,7 @@ class Doc:
         self.id = id
         if soup.body is not None:
             self.title = soup.title.string
-            self.body = soup.body
+            self.body = soup.body.string
             self.date = soup.dateline
         else:
             self.title = soup.text[:100]
@@ -272,12 +272,27 @@ def search(index, query):
 
 
 docs, collection = make_collection()
-
+ram_docs = {}
+ram_index = {}
+n = len(collection)
 index = make_index(collection)
 soundex_index = make_soundex_index(collection)
 wild_index = make_wild_index(collection)
 def get_doc(id):
-    return docs[id]
+    return docs[int(id)]
+
+def update(doc):
+    words = preprocess_no_lemma(doc)
+    for word in words:
+        for i in range(len(word) + 1):
+            wild_index.insert(word[i:len(word)] + '$' + word[:i])
+        sound = soundex(word)
+        if sound in soundex_index:
+            soundex_index[sound].add(word)
+        else:
+            soundex_index[sound] = {word}
+    ram_docs[n] = Doc(doc, n)
+
 # def save():
 #     if not os.path.exists("./dumps"):
 #         os.mkdir("./dumps")

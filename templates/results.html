@@ -9,12 +9,11 @@
     <input type="text" name="query">
     <input type="submit" value="Search">
 </form>
-  {% for doc in docs[:10]%}
-        <div onclick="{{ url_for('getdoc', docid=doc[1].id) }}" >
-          <h4>{{ doc[1].title }}</h4>
-          <p>{{ doc[1].body[:100] }}</p>
-        </div>
-  {% endfor %}
+    {% for doc in docs[:10]%}
+        <a href="{{ url_for('get_doc', docid=doc[1].id) }}">{{ doc[1].title }}</a>
+        <p onclick="{{ url_for('get_doc', docid=doc[1].id) }}">{{ doc[1].body[:100] }}</p>
+        <br>
+    {% endfor %}
 </body>
 
 </html>
