@@ -1,158 +1,54 @@
 import os
-import re
-import nltk
+from Doc import Doc
+from index import *
+import mongoengine
+from processing import *
+from soundex import Soundex
 
-nltk.download('punkt')
-nltk.download('wordnet')
-nltk.download('averaged_perceptron_tagger')
-from nltk.stem import WordNetLemmatizer
+mongoengine.connect("engine")
 
-lemmatizer = WordNetLemmatizer()
-from nltk import pos_tag
-from nltk.corpus import stopwords
+from wild import Wild
 
-nltk.download('stopwords')
-import glob
-from bs4 import BeautifulSoup
-from jellyfish import soundex
-from Levenshtein import ratio as levenshtein
+if Doc.objects.count() == 0:
+    init = True
+else:
+    init = False
 
 
-def get_closest_soundex(soundex_index, word):
-    x = soundex_index[soundex(word)].copy()
-    if word in x:
-        x.remove(word)
-    return max([(levenshtein(word, i), i) for i in x])[1]
+def make_doc(soup):
+    if soup.body is not None:
+        return {"title": soup.title.string, 'body': soup.body.string, 'date': soup.dateline.string}
+    return {"title": soup.text[:100], 'body': soup.text, 'date': None}
 
-
-def normalize(text):
-    ret = text.lower()
-    ret = re.sub('[^a-zA-Z* ]+', '', ret)
-    return ret
-
-
-def tokenize(text):
-    return nltk.word_tokenize(text)
-
-
-def lemmatization(tokens):
-    posed = pos_tag(tokens)
-    ret = []
-    for word, tag in posed:
-        wntag = tag[0].lower()  # appropriated from stackoverflow https://stackoverflow.com/a/32959872
-        wntag = wntag if wntag in ['a', 'r', 'n', 'v'] else None
-        if not wntag:
-            lemma = word
-        else:
-            lemma = lemmatizer.lemmatize(word, wntag)
-        ret.append(lemma)
-    return ret
-
-
-def remove_stop_word(tokens):
-    sw = set(stopwords.words('english'))
-    return [word for word in tokens if not word in sw]
-
-
-def preprocess(text):
-    return remove_stop_word(lemmatization(tokenize(normalize(text))))
-
-
-def preprocess_no_lemma(text):
-    return remove_stop_word(tokenize(normalize(text)))
-
-class Doc:
-    def __init__(self, soup, id):
-        self.id = id
-        if soup.body is not None:
-            self.title = soup.title.string
-            self.body = soup.body.string
-            self.date = soup.dateline
-        else:
-            self.title = soup.text[:100]
-            self.body = soup.text
-            self.date = None
 
 def make_collection():
     all_files = glob.glob('./data/*.sgm')
-    collection = []
-    docs = []
     for fil in all_files:
         with open(fil, 'rb') as f:
             sample_file = f.read()
             for text in sample_file.split(b"</REUTERS>"):
                 soup = BeautifulSoup(text, 'html.parser')
-                collection.append(soup.get_text())
-                docs.append(Doc(soup, len(docs)))
-    return docs, collection
+                doc = make_doc(soup)
+                Doc(title=doc['title'], body=doc['body'], date=doc['date']).save()
 
 
-def make_index(collection):
+def make_index():
     inverted_index = {}
-    for i in range(len(collection)):
-        text = collection[i]
+    for i in Doc.objects:
+        text = i.body
         words = preprocess(text)
         for word in words:
             if word in inverted_index:
-                inverted_index[word].add(i)
+                inverted_index[word].add(i.id)
             else:
-                inverted_index[word] = {i}
+                inverted_index[word] = {i.id}
     return inverted_index
 
 
-def make_soundex_index(collection):
-    soundex_index = {}
-    for i in range(len(collection)):
-        text = collection[i]
-        words = preprocess_no_lemma(text)
-        for word in words:
-            sound = soundex(word)
-            if sound in soundex_index:
-                soundex_index[sound].add(word)
-            else:
-                soundex_index[sound] = {word}
-    return soundex_index
-
-
-from BTrees.OOBTree import OOBTree
-
-t = OOBTree()
-
-
-class Wild(object):
-    def __init__(self):
-        self.tree = OOBTree()
-
-    def insert(self, s):
-        self.tree.insert(s, s)
-
-    def find_stars(self, s):
-        key1 = s
-        key2 = s[:-1] + chr(ord(s[-1]) + 1)
-        return self.tree.items(min=key1, max=key2, excludemax=True)
-
-    def process_stars(self, s):
-        n = s.count('*')
-        if n == 1:
-            if s[-1] == '*':
-                stars = self.find_stars("$" + s[:-1])
-            elif s[0] == '*':
-                stars = self.find_stars(s[1:] + "$")
-            else:
-                arr = s.split("*")
-                stars = self.find_stars(arr[1] + "$" + arr[0])
-            return [sp.split("$")[1] + sp.split("$")[0] for sp, _ in stars]
-        else:
-            print("Sorry, we only work with one '*' at a time")
-
-    def get_word(self, word):
-        return self.tree.get("$" + word, False)
-
-
-def make_wild_index(collection):
+def make_wild_index():
     wild_index = Wild()
-    for i in range(len(collection)):
-        text = collection[i]
+    for i in Doc.objects:
+        text = i.body
         words = preprocess_no_lemma(text)
         for word in words:
             for i in range(len(word) + 1):
@@ -160,7 +56,7 @@ def make_wild_index(collection):
     return wild_index
 
 
-def process_query(query):
+def process_query(query, soundex):
     a = remove_stop_word(query.replace('(', "( ").replace(')', " )").split())
     for i in range(len(a)):
         if a[i] in ['(', ')', '||', "&"]:
@@ -169,8 +65,8 @@ def process_query(query):
             stars = wild_index.process_stars(a[i])
             a[i] = '( ' + ' || '.join(stars) + ' )'
             continue
-        if wild_index.get_word(a[i]) == False:
-            word = get_closest_soundex(soundex_index, a[i])
+        if not wild_index.get_word(a[i]):
+            word = soundex.get_closest_soundex(a[i])
             a[i] = '( ' + word + ' || ' + a[i] + ' )'
     return ' & '.join(a).replace('( & (', '( (') \
         .replace('& || &', '||') \
@@ -183,18 +79,18 @@ def process_query(query):
 def calculate_query(query):
     def add(word1, word2):
         if type(word1) == str:
-            if wild_index.get_word(word1) == False:
+            if not wild_index.get_word(word1):
                 set1 = {}
             else:
-                set1 = set(index[preprocess(word1)[0]])
+                set1 = set(Inverted.objects.get(word=preprocess(word1)[0]).docs)
         else:
             set1 = word1
 
         if type(word2) == str:
-            if wild_index.get_word(word2) == False:
+            if not wild_index.get_word(word2):
                 return set1
             else:
-                set2 = set(index[preprocess(word2)[0]])
+                set2 = set(Inverted.objects.get(word=preprocess(word1)[0]).docs)
         else:
             set2 = word2
 
@@ -206,18 +102,18 @@ def calculate_query(query):
 
     def mult(word1, word2):
         if type(word1) == str:
-            if wild_index.get_word(word1) == False:
+            if not wild_index.get_word(word1):
                 set1 = {}
             else:
-                set1 = set(index[preprocess(word1)[0]])
+                set1 = set(Inverted.objects.get(word=preprocess(word1)[0]).docs)
         else:
             set1 = word1
 
         if type(word2) == str:
-            if wild_index.get_word(word2) == False:
+            if not wild_index.get_word(word2):
                 return set1
             else:
-                set2 = set(index[preprocess(word2)[0]])
+                set2 = set(Inverted.objects.get(word=preprocess(word2)[0]).docs)
         else:
             set2 = word2
 
@@ -231,7 +127,7 @@ def calculate_query(query):
     num = []
     calc = []
     if len(a) == 1:
-        return index[preprocess(a[0])[0]]
+        return set(Inverted.objects.get(word=preprocess(a[0])[0]).docs)
 
     for i in range(len(a)):
         if a[i] in ['(', ')', '||', "&"]:
@@ -263,67 +159,41 @@ def calculate_query(query):
     return list(num[0])
 
 
-def search(index, query):
-    a = process_query(query)
-    print('Internal representation of query:', a)
+def search(query):
+    a = process_query(query, soundex_index)
     a = calculate_query(a)
-    print(a)
-    return [(i, docs[i]) for i in a]
+    return [(i, Doc.objects.get(id=i)) for i in a]
 
 
-docs, collection = make_collection()
-ram_docs = {}
-ram_index = {}
-n = len(collection)
-index = make_index(collection)
-soundex_index = make_soundex_index(collection)
-wild_index = make_wild_index(collection)
 def get_doc(id):
-    return docs[int(id)]
+    return Doc.objects.get(id=id)
+
 
 def update(doc):
     words = preprocess_no_lemma(doc)
     for word in words:
         for i in range(len(word) + 1):
             wild_index.insert(word[i:len(word)] + '$' + word[:i])
-        sound = soundex(word)
-        if sound in soundex_index:
-            soundex_index[sound].add(word)
-        else:
-            soundex_index[sound] = {word}
-    ram_docs[n] = Doc(doc, n)
+            soundex_index.update(word)
+            if word in ram_index:
+                ram_index[word] += n
+            else:
+                ram_index[word] = {n}
+    ram_docs[n] = make_doc(doc)
 
-# def save():
-#     if not os.path.exists("./dumps"):
-#         os.mkdir("./dumps")
-#     with open('./dumps/soundex.pickle', 'wb') as f:
-#         pickle.dump(soundex_index, f)
-#     with open('./dumps/index.pickle', 'wb') as f:
-#         pickle.dump(index, f)
-#     with open('./dumps/wild.pickle', 'wb') as f:
-#         pickle.dump(wild_index, f)
-#
-#
-# def init():
-#     global soundex_index
-#     global index
-#     global wild_index
-#     if os.path.exists("./dumps/soundex.pickle"):
-#         with open('./dumps/soundex.pickle', 'rb') as f:
-#             soundex_index = pickle.load(f)
-#     else:
-#         soundex_index = make_soundex_index(collection)
-#     if os.path.exists("./dumps/index.pickle"):
-#         with open('./dumps/index.pickle', 'rb') as f:
-#             index = pickle.load(f)
-#     else:
-#         index = make_index(collection)
-#     if os.path.exists("./dumps/wild.pickle"):
-#         with open('./dumps/wild.pickle', 'rb') as f:
-#             wild_index = pickle.load(f)
-#     else:
-#         wild_index = make_wild_index(collection)
-#     save()
 
-# init()
-# print(soundex_index)
+def save_index(inverted_index):
+    for k, v in inverted_index.items():
+        Inverted(word=k, docs=v).save()
+
+
+if init:
+    make_collection()
+    save_index(make_index())
+
+soundex_index = Soundex()
+wild_index = make_wild_index()
+
+ram_docs = {}
+ram_index = {}
+n = Doc.objects.count()

@@ -10,7 +10,7 @@ app = Flask(__name__)
 @app.route('/search', methods=['GET'])
 def search():
     if request.method == 'GET':
-        docs = engine.search(engine.index, request.args.get('query'))
+        docs = engine.search(request.args.get('query'))
         return render_template('results.html', docs=docs)
     return 'smt'
 
