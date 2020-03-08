@@ -3,6 +3,7 @@ from flask import render_template
 from flask import request
 
 import engine
+import red_search
 
 app = Flask(__name__)
 
@@ -10,7 +11,7 @@ app = Flask(__name__)
 @app.route('/search', methods=['GET'])
 def search():
     if request.method == 'GET':
-        docs = engine.search(request.args.get('query'))
+        docs = red_search.search(request.args.get('query'), engine_obj)
         return render_template('results.html', docs=docs)
     return 'smt'
 
@@ -20,9 +21,22 @@ def get_doc():
         return render_template('doc.html', doc=engine.get_doc(request.args.get('docid')))
     return 'smt'
 
+
 @app.route('/')
 def hello_world(name=None):
     return render_template('main.html', name=name)
+
+
+@app.route("/new_doc", methods=['GET', 'POST'])
+def new_doc():
+    if request.method == 'GET':
+        return render_template("new_doc.html")
+    elif request.method == "POST":
+        engine_obj.update(request.form['text'])
+        return render_template("main.html", name=None)
+
+
+engine_obj = engine.Engine()
 
 if __name__ == '__main__':
     app.run()

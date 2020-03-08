@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>New Document Submission</title>
+</head>
+<body>
+<H2> SearchBar</H2>
+<form action="{{ url_for('new_doc')}}" method="post">
+    <textarea name="text">
+        <TEXT>
+            <TITLE>STANDARD OIL TO FORM FINANCIAL UNIT</TITLE>
+            <DATELINE>    CLEVELAND, Feb 26 - </DATELINE>
+            <BODY>Standard Oil Co and BP North America
+            Inc said they plan to form a venture to manage the money market
+            borrowing and investment activities of both companies.
+                BP North America is a subsidiary of British Petroleum Co
+            Plc &lt;BP>, which also owns a 55 pct interest in Standard Oil.
+                The venture will be called BP/Standard Financial Trading
+            and will be operated by Standard Oil under the oversight of a
+            joint management committee.
+
+             Reuter
+            </BODY>
+        </TEXT>
+    </textarea>
+    <input type="submit" value="Search">
+</form>
+</body>
+</html>

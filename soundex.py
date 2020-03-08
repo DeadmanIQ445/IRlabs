@@ -5,7 +5,7 @@ from Doc import Doc
 
 class Soundex():
     def __init__(self):
-        self.index = []
+        self.index = {}
 
     def get_closest_soundex(self, word):
         x = self.index[soundex(word)].copy()
