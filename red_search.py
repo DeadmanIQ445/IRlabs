@@ -1,5 +1,9 @@
+import json
+import pickle
+
 import engine
 import pers_search
+from Doc import DocR
 
 
 def calculate_query(query, wild_index, cache):
@@ -8,7 +12,7 @@ def calculate_query(query, wild_index, cache):
             if not wild_index.get_word(word1):
                 set1 = {}
             else:
-                set1 = set(cache.aux.get(engine.preprocess(word1)[0]))
+                set1 = set(map(int, cache.aux.lrange(engine.preprocess(word1)[0], 0, -1)))
         else:
             set1 = word1
 
@@ -16,7 +20,7 @@ def calculate_query(query, wild_index, cache):
             if not wild_index.get_word(word2):
                 return set1
             else:
-                set2 = set(cache.aux.get(engine.preprocess(word2)[0]))
+                set2 = set(map(int, cache.aux.lrange(engine.preprocess(word2)[0], 0, -1)))
         else:
             set2 = word2
 
@@ -31,7 +35,7 @@ def calculate_query(query, wild_index, cache):
             if not wild_index.get_word(word1):
                 set1 = {}
             else:
-                set1 = set(cache.aux.get(engine.preprocess(word1)[0]))
+                set1 = set(map(int, cache.aux.lrange(engine.preprocess(word1)[0], 0, -1)))
         else:
             set1 = word1
 
@@ -39,7 +43,7 @@ def calculate_query(query, wild_index, cache):
             if not wild_index.get_word(word2):
                 return set1
             else:
-                set2 = set(cache.aux.get(engine.preprocess(word2)[0]))
+                set2 = set(map(int, cache.aux.lrange(engine.preprocess(word2)[0], 0, -1)))
         else:
             set2 = word2
 
@@ -53,7 +57,7 @@ def calculate_query(query, wild_index, cache):
     num = []
     calc = []
     if len(a) == 1:
-        return set(cache.aux.get(engine.preprocess(a[0])[0]))
+        return set(map(int, cache.aux.lrange(engine.preprocess(a[0])[0], 0, -1)))
 
     for i in range(len(a)):
         if a[i] in ['(', ')', '||', "&"]:
@@ -96,5 +100,6 @@ def search(query, engine_obj):
     if len(a)==0:
         print('No such docs in ram, going hard')
         return pers_search.search(query, engine_obj)
-
-    return [(i, engine_obj.cache.docs.objects.get(id=i)) for i in a]
+    print([(i,type(i)) for i in a])
+    print([engine_obj.cache.docs.get(i) for i in list(a)])
+    return [(i, DocR(json=json.loads(engine_obj.cache.docs.get(i)))) for i in a]

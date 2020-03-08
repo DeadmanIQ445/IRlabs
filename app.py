@@ -18,7 +18,7 @@ def search():
 @app.route('/get_doc', methods=['GET'])
 def get_doc():
     if request.method == 'GET':
-        return render_template('doc.html', doc=engine.get_doc(request.args.get('docid')))
+        return render_template('doc.html', doc=engine.get_doc(request.args.get('docid'), engine_obj))
     return 'smt'
 
 

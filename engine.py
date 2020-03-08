@@ -1,3 +1,4 @@
+import json
 import os
 from Doc import Doc
 from cache import Cache
@@ -77,7 +78,11 @@ def process_query(query, soundex, wild_index):
         .replace('& & &', '&')
 
 
-def get_doc(id):
+def get_doc(id, engine):
+    a = engine.cache.docs.get(id)
+    if a:
+        print(a)
+        return json.loads(a)
     return Doc.objects.get(id=id)
 
 
