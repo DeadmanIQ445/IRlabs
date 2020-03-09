@@ -1,7 +1,6 @@
 import engine
 
 
-
 def calculate_query(query, wild_index):
     def add(word1, word2):
         if type(word1) == str:
@@ -31,7 +30,7 @@ def calculate_query(query, wild_index):
             if not wild_index.get_word(word1):
                 set1 = {}
             else:
-                set1 = set(Inverted.objects.get(word=engine.preprocess(word1)[0]).docs)
+                set1 = set(engine.Inverted.objects.get(word=engine.preprocess(word1)[0]).docs)
         else:
             set1 = word1
 
@@ -39,7 +38,7 @@ def calculate_query(query, wild_index):
             if not wild_index.get_word(word2):
                 return set1
             else:
-                set2 = set(Inverted.objects.get(word=engine.preprocess(word2)[0]).docs)
+                set2 = set(engine.Inverted.objects.get(word=engine.preprocess(word2)[0]).docs)
         else:
             set2 = word2
 
@@ -53,7 +52,7 @@ def calculate_query(query, wild_index):
     num = []
     calc = []
     if len(a) == 1:
-        return set(Inverted.objects.get(word=engine.preprocess(a[0])[0]).docs)
+        return set(engine.Inverted.objects.get(word=engine.preprocess(a[0])[0]).docs)
 
     for i in range(len(a)):
         if a[i] in ['(', ')', '||', "&"]:

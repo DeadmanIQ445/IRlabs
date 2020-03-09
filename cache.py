@@ -6,7 +6,6 @@ import redis
 
 import engine
 
-
 class Cache:
     def __init__(self):
         self.docs = redis.Redis(host='localhost', port=6379, db=0)
@@ -21,32 +20,36 @@ class Cache:
         words = engine.preprocess(text['body'])
         for word in words:
             self.aux.lpush(word, self.id)
+
         self.id += 1
 
     def dump(self):
         if len(self.docs.keys())>0:
-            db = mongoengine.connect('engine', connect=False)
-            print('starting dump')
+            print("start dumping")
+            db = mongoengine.connect('engine', "dump")
             key_pair = {}
             for k, v in self.get_all():
                 doc = engine.DocR(json=json.loads(v[0]))
                 d = engine.Doc(title=doc.title, body=doc.body, date=doc.date).save()
                 key_pair[k[0]] = d.id
+            print(self.get_all_ind())
             for k, v in self.get_all_ind():
+                print(k,v)
                 key = k.decode("UTF-8")
-                print(key)
                 ind = engine.Inverted.objects(word=key)
+                val = [key_pair[i] for i in v]
                 if not ind:
-                    engine.Inverted(word=key, docs=[key_pair[v[0]]]).save()
-                    for i in range(1,len(v)):
-                        ind.get().docs.append(key_pair[v[i]])
+                    se = set(val)
+                    obj = engine.Inverted(word=key, docs=se)
+                    obj.save(force_insert=True)
                 else:
-                    for i in v:
-                        ind.get().docs.append(key_pair[i])
-            db.close()
+                    se = list(set(val + ind[0].docs))
+                    obj = engine.Inverted(word=key, docs=se)
+                    obj.save()
             self.docs.flushdb()
             self.aux.flushdb()
             self.id = 0
+            db.close()
             print("Dumped ram into hdd")
 
     def get_all(self):
@@ -62,16 +65,17 @@ class Cache:
     def get_all_ind(self):
         data = []
         for key in self.aux.keys():
+            print("key:", key)
             values = self.aux.lrange(key, 0, -1)
+            print("values:", values)
             values = list(set(values))
+            print("set:", values)
             data.append((key, values))
         return data
-
-
 
 
 def run():
     ca = Cache()
     while True:
-        # time.sleep(30)
+        time.sleep(30)
         ca.dump()

@@ -1,5 +1,6 @@
-from multiprocessing import Process
+import threading
 
+import mongoengine
 from flask import Flask
 from flask import render_template
 from flask import request
@@ -8,6 +9,8 @@ import cache
 import eng_class
 import engine
 import red_search
+
+mongoengine.connect('engine')
 
 app = Flask(__name__)
 
@@ -43,6 +46,6 @@ def new_doc():
 engine_obj = eng_class.Engine()
 
 if __name__ == '__main__':
-    thread = Process(target=cache.run)
-    thread.run()
+    thread = threading.Thread(target=cache.run)
+    thread.start()
     app.run()

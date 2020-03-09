@@ -11,9 +11,11 @@ class Engine:
             init = False
         if init:
             engine.make_collection()
+            print('Saved Documents')
             engine.save_index(engine.make_index())
             print("Generated inverted")
         self.soundex_index = Soundex()
+        self.soundex_index.make_soundex_index()
         print("Created Soundex")
         self.wild_index = engine.make_wild_index()
         print("Created Wild Card")

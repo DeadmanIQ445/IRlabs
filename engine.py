@@ -3,13 +3,10 @@ import json
 from bs4 import BeautifulSoup
 import mongoengine
 from processing import *
-
-mongoengine.connect("engine", connect=False)
-
 from wild import Wild
 
 
-
+# mongoengine.connect('engine', alias='alias')
 
 def make_doc(soup):
     if soup.body is not None:
@@ -77,12 +74,16 @@ def get_doc(id, engine):
     if a:
         print(a)
         return json.loads(a)
-    return Doc.objects.get(id=id)
+    a = Doc.objects.get(id=id)
+    return a
 
 
 def save_index(inverted_index):
+    # db = mongoengine.connect('engine', connect=False)
+
     for k, v in inverted_index.items():
         Inverted(word=k, docs=v).save()
+    # db.close()
 
 
 class Doc(mongoengine.Document):
