@@ -1,7 +1,11 @@
+from multiprocessing import Process
+
 from flask import Flask
 from flask import render_template
 from flask import request
 
+import cache
+import eng_class
 import engine
 import red_search
 
@@ -36,7 +40,9 @@ def new_doc():
         return render_template("main.html", name=None)
 
 
-engine_obj = engine.Engine()
+engine_obj = eng_class.Engine()
 
 if __name__ == '__main__':
+    thread = Process(target=cache.run)
+    thread.run()
     app.run()

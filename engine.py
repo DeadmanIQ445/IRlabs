@@ -1,20 +1,14 @@
+import glob
 import json
-import os
-from Doc import Doc
-from cache import Cache
-from index import *
+from bs4 import BeautifulSoup
 import mongoengine
 from processing import *
-from soundex import Soundex
 
-mongoengine.connect("engine")
+mongoengine.connect("engine", connect=False)
 
 from wild import Wild
 
-if Doc.objects.count() == 0:
-    init = True
-else:
-    init = False
+
 
 
 def make_doc(soup):
@@ -91,22 +85,31 @@ def save_index(inverted_index):
         Inverted(word=k, docs=v).save()
 
 
-class Engine:
-    def __init__(self):
-        if init:
-            make_collection()
-            save_index(make_index())
-        self.soundex_index = Soundex()
-        self.wild_index = make_wild_index()
-        self.cache = Cache()
+class Doc(mongoengine.Document):
+    title = mongoengine.StringField()
+    body = mongoengine.StringField()
+    date = mongoengine.StringField()
 
-    def update(self, doc):
-        print(doc)
-        words = preprocess_no_lemma(doc)
-        print(words)
-        for word in words:
-            print(word)
-            for i in range(len(word) + 1):
-                self.wild_index.insert(word[i:len(word)] + '$' + word[:i])
-            self.soundex_index.update(word)
-        self.cache.update(doc)
+    @classmethod
+    def get_by_id(cls, id):
+        return cls.objects.get(__id=id)
+
+class DocR:
+    def __init__(self, title=None, body=None, date=None, id=None, json=None):
+        if json:
+            self.title = json['title']
+            self.body = json['body']
+            self.date = json['date']
+            self.id = json['id']
+        else:
+            self.title = title
+            self.body = body
+            self.date = date
+            self.id = id
+
+
+
+
+class Inverted(mongoengine.Document):
+    word = mongoengine.StringField()
+    docs = mongoengine.ListField()

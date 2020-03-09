@@ -8,8 +8,7 @@ lemmatizer = WordNetLemmatizer()
 from nltk import pos_tag
 from nltk.corpus import stopwords
 nltk.download('stopwords')
-import glob
-from bs4 import BeautifulSoup
+
 
 
 def normalize(text):

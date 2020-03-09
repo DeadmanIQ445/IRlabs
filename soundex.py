@@ -1,7 +1,7 @@
 from jellyfish import soundex
 from Levenshtein import ratio as levenshtein
 from processing import *
-from Doc import Doc
+import engine
 
 class Soundex():
     def __init__(self):
@@ -14,7 +14,7 @@ class Soundex():
         return max([(levenshtein(word, i), i) for i in x])[1]
 
     def make_soundex_index(self):
-        for i in Doc.objects:
+        for i in engine.Doc.objects:
             text = i.body
             words = preprocess_no_lemma(text)
             for word in words:

@@ -1,6 +1,5 @@
 import engine
-from Doc import Doc
-from index import Inverted
+
 
 
 def calculate_query(query, wild_index):
@@ -9,7 +8,7 @@ def calculate_query(query, wild_index):
             if not wild_index.get_word(word1):
                 set1 = {}
             else:
-                set1 = set(Inverted.objects.get(word=engine.preprocess(word1)[0]).docs)
+                set1 = set(engine.Inverted.objects.get(word=engine.preprocess(word1)[0]).docs)
         else:
             set1 = word1
 
@@ -17,7 +16,7 @@ def calculate_query(query, wild_index):
             if not wild_index.get_word(word2):
                 return set1
             else:
-                set2 = set(Inverted.objects.get(word=engine.preprocess(word1)[0]).docs)
+                set2 = set(engine.Inverted.objects.get(word=engine.preprocess(word1)[0]).docs)
         else:
             set2 = word2
 
@@ -89,4 +88,4 @@ def calculate_query(query, wild_index):
 def search(query, enginge_obj):
     a = engine.process_query(query, enginge_obj.soundex_index, enginge_obj.wild_index)
     a = calculate_query(a, enginge_obj.wild_index)
-    return [(i, Doc.objects.get(id=i)) for i in a]
+    return [(i, engine.Doc.objects.get(id=i)) for i in a]

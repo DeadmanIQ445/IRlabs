@@ -3,7 +3,6 @@ import pickle
 
 import engine
 import pers_search
-from Doc import DocR
 
 
 def calculate_query(query, wild_index, cache):
@@ -102,4 +101,4 @@ def search(query, engine_obj):
         return pers_search.search(query, engine_obj)
     print([(i,type(i)) for i in a])
     print([engine_obj.cache.docs.get(i) for i in list(a)])
-    return [(i, DocR(json=json.loads(engine_obj.cache.docs.get(i)))) for i in a]
+    return [(i, engine.DocR(json=json.loads(engine_obj.cache.docs.get(i)))) for i in a]
